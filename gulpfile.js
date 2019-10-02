@@ -1,8 +1,10 @@
-const { parallel, src, dest } = require('gulp');
+"use strict";
+
+const { parallel, series, src, dest, watch, task } = require('gulp');
 const sass = require("gulp-sass");
 const postcss = require("gulp-postcss");
 const cssnano = require("cssnano");
-const browserSync = require("browser-sync").create();
+const browsersync = require("browser-sync").create();
 
 var paths = {
   css: {
@@ -10,8 +12,31 @@ var paths = {
     src: "sass/*.scss",
     // Compiled files will end up in whichever folder it's found in (partials are not compiled)
     dest: "build/css"
+  },
+  images: {
+    src: "images/*"
+  },
+  html: {
+    src: "*.html"
   }
 };
+
+// BrowserSync
+function browserSync(done) {
+  browsersync.init({
+    server: {
+      baseDir: "./"
+    },
+    port: 3000
+  });
+  done();
+}
+
+// BrowserSync Reload
+function browserSyncReload(done) {
+  browsersync.reload();
+  done();
+}
 
 function css() {
   return src(paths.css.src)
@@ -19,9 +44,24 @@ function css() {
     .on("error", sass.logError)
     .pipe(postcss([cssnano()]))
     .pipe(dest(paths.css.dest))
-    .pipe(browserSync.stream());
+    .pipe(browsersync.stream());
 }
 
+function html() {
+  return src(paths.html.src)
+    .pipe(browsersync.stream());
+}
 
-//exports.build = parallel(css);
-exports.default = parallel(css);
+function refreshAssets() {
+  browserSyncReload;
+}
+
+function watcher() {
+  return watch([paths.css.src, paths.html.src], function(cb) {
+      css();
+      browsersync.reload();
+      cb();
+  });
+}
+
+exports.default = series(browserSync, css, watcher);
